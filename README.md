@@ -1,106 +1,117 @@
-🧠 Serverless AI Chatbot on AWS (Terraform + Bedrock)
+# Project Overview
 
-A production-oriented, serverless chatbot MVP built entirely with Infrastructure as Code (Terraform).
-
-This project demonstrates API design, IAM least privilege, serverless compute, DynamoDB session storage, and Amazon Bedrock integration — along with real-world AWS account gating challenges and graceful degradation patterns.
-
-🏗 Architecture Overview
-
-Frontend
-
-Static single-page HTML app
-
-Hosted in Amazon S3
-
-(CloudFront CDN – pending account verification)
+This project is a serverless AI chatbot built on AWS using Amazon Bedrock for LLM inference.  
+It demonstrates Infrastructure as Code (Terraform), secure serverless design patterns, and scalable cloud architecture suitable for production environments.
 
 
-Backend
+# Architecture 
 
-API Gateway (HTTP API)
+The system is designed as a serverless, event-driven architecture:
 
-AWS Lambda (Python 3.12)
-
-Amazon DynamoDB (chat session memory)
-
-
-AI Layer
-
-Amazon Bedrock (Nova / Llama models)
-
-On-demand foundation model invocation
-
-Graceful fallback when token quotas unavailable
+- Amazon API Gateway (HTTP API) provides a lightweight REST endpoint.
+- AWS Lambda (Python 3.12) processes chat requests.
+- Amazon DynamoDB stores session-based conversation history.
+- Amazon Bedrock powers LLM inference.
+- Amazon S3 hosts the static frontend.
+- Amazon CloudFront distributes content globally with HTTPS enforcement.
 
 
-Infrastructure
+# Architecture Diagram
 
-Fully provisioned with Terraform
-
-No console click-ops
-
-Environment-based configuration
-
-
-🔄 Request Flow
-
-User submits message via static HTML frontend.
-
-API Gateway receives POST /chat.
-
-Lambda:
-
-Retrieves session memory from DynamoDB
-
-Calls Amazon Bedrock
-
-Stores updated session state
-
-Response returned to client.
-
-If Bedrock quota is unavailable:
-
-Lambda returns a fallback response
-
-Service remains operational
+Client
+   ↓
+CloudFront
+   ↓
+S3 (Static Site)
+   ↓
+API Gateway
+   ↓
+Lambda
+   ↓
+Bedrock
+   ↓
+DynamoDB
 
 
-🔐 Security (MVP vs Production)
-MVP (Current)
+# Design Decisions
 
-No authentication
-
-Strict CORS restrictions
-
-IAM least privilege
-
-DynamoDB partition key isolation per session
-
-Production Hardening (Planned)
-
-Amazon Cognito / JWT Authorizer
-
-AWS WAF rate limiting
-
-API Gateway throttling
-
-Structured logging + alarms
-
-CloudFront with HTTPS-only enforcement
+- Used HTTP API instead of REST API to reduce cost and latency.
+- Selected DynamoDB to maintain serverless architecture consistency.
+- Implemented environment-based model configuration for flexible LLM switching.
+- Managed infrastructure via Terraform to ensure reproducibility.
+- Separated application and infrastructure directories for clean DevOps workflows.
 
 
-📦 Infrastructure as Code
+# Security Considerations
 
-Provisioned using Terraform:
+- IAM role-based access for Lambda
+- Principle of least privilege applied to Bedrock and DynamoDB
+- HTTPS enforced via CloudFront
+- S3 public access blocked
 
-API Gateway HTTP API
 
-Lambda (Python 3.12)
+# Current Limitations
 
-DynamoDB (PAY_PER_REQUEST)
+- CloudFront distribution pending account verification.
+- Bedrock on-demand token quotas restricted on new accounts.
 
-IAM role + inline least-privilege policy
 
-S3 static hosting
+# Request Flow
 
-(CloudFront CDN – gated)
+1. User submits a message from the static frontend (S3).
+2. HTTPS request is sent to Amazon API Gateway (HTTP API).
+3. API Gateway invokes the Lambda function asynchronously.
+4. Lambda:
+  - Retrieves conversation history from DynamoDB using session_id
+  - Appends new user message
+  - Sends structured request to Amazon Bedrock (Converse API)
+5. Bedrock returns model response.
+6. Lambda:
+  - Persists updated conversation history to DynamoDB
+  - Returns structured JSON response
+7. API Gateway returns response to frontend client.
+
+
+# Infrastructure as Code
+
+All AWS resources are provisioned using Terraform with environment-based configuration.
+
+Key Components:
+
+- Lambda function (Python 3.12 runtime)
+- API Gateway HTTP API
+- DynamoDB table (on-demand capacity)
+- S3 static hosting bucket
+- CloudFront distribution (pending account verification)
+- IAM roles with least-privilege Bedrock & DynamoDB access
+
+Design Principles:
+
+- Stateless compute layer (Lambda)
+- Session persistence in DynamoDB
+- Parameterized model ID via terraform.tfvars
+- Environment variable injection into Lambda
+- Deterministic builds via archive_file data source
+- Reproducible deployment using terraform apply
+
+
+# Why Serverless?
+
+This project uses a fully serverless architecture to optimize for scalability, cost-efficiency, and operational simplicity.
+
+Design Rationale:
+
+- No server management
+AWS Lambda eliminates the need to provision or maintain EC2 instances.
+
+- Automatic scaling
+Lambda and API Gateway scale automatically based on request volume.
+
+- Cost efficiency
+The system follows a pay-per-request model. With no idle compute resources, costs remain minimal during low usage.
+
+- Event-driven architecture
+API Gateway triggers Lambda only when requests are received, aligning with modern cloud-native patterns.
+
+- Stateless compute with persistent storage
+Lambda remains stateless while DynamoDB handles session persistence.
