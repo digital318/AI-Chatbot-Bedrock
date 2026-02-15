@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bedrock Chatbot (AWS)</title>
+    <style>
+      body { font-family: system-ui, Arial; max-width: 900px; margin: 32px auto; padding: 0 16px; }
+      .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+      #log { height: 420px; overflow: auto; border: 1px solid #eee; border-radius: 10px; padding: 12px; background: #fafafa; }
+      .row { display: flex; gap: 8px; margin-top: 12px; }
+      input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
+      button { padding: 12px 14px; border-radius: 10px; border: 1px solid #ddd; cursor: pointer; }
+      .msg { margin: 10px 0; }
+      .user { font-weight: 600; }
+      .assistant { font-weight: 600; }
+      .small { color: #666; font-size: 12px; }
+      code { background: #f3f3f3; padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <h1>Bedrock Chatbot (AWS Serverless)</h1>
+    <p class="small">
+      API Endpoint: <code id="apiLabel"></code>
+    </p>
+
+    <div class="card">
+      <div id="log"></div>
+      <div class="row">
+        <input id="msg" placeholder="Type a message..." />
+        <button id="send">Send</button>
+      </div>
+    </div>
+
+    <script>
+      // Paste your API endpoint (Terraform output "api_endpoint") here:
+      const API_ENDPOINT = "PASTE_API_ENDPOINT_HERE"; // e.g. https://abc123.execute-api.us-east-1.amazonaws.com
+
+      document.getElementById("apiLabel").textContent = API_ENDPOINT || "(not set)";
+      const log = document.getElementById("log");
+      const msg = document.getElementById("msg");
+      const send = document.getElementById("send");
+
+      // Simple session id stored in the browser
+      const SESSION_KEY = "bedrock_chat_session_id";
+      let sessionId = localStorage.getItem(SESSION_KEY) || crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, sessionId);
+
+      function addLine(who, text) {
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.innerHTML = `<span class="${who}">${who}:</span> ${text}`;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+      }
+
+      async function sendMessage() {
+        const text = msg.value.trim();
+        if (!text) return;
+
+        addLine("user", text);
+        msg.value = "";
+        send.disabled = true;
+
+        try {
+          const res = await fetch(`${API_ENDPOINT}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId, message: text })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Request failed");
+
+          sessionId = data.session_id;
+          localStorage.setItem(SESSION_KEY, sessionId);
+          addLine("assistant", (data.reply || "").replaceAll("\n", "<br/>"));
+        } catch (e) {
+          addLine("assistant", `⚠️ ${e.message}`);
+        } finally {
+          send.disabled = false;
+          msg.focus();
+        }
+      }
+
+      send.addEventListener("click", sendMessage);
+      msg.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+
+      addLine("assistant", "Hey! I’m running on AWS (CloudFront → API Gateway → Lambda → DynamoDB → Bedrock).");
+    </script>
+  </body>
+</html>
