@@ -4,6 +4,15 @@ This project is a serverless AI chatbot built on AWS using Amazon Bedrock for LL
 It demonstrates Infrastructure as Code (Terraform), secure serverless design patterns, and scalable cloud architecture suitable for production environments.
 
 
+# Live Demo
+
+Frontend (CloudFront):
+https://djn6jc1yqeaas.cloudfront.net
+
+API Endpoint:
+POST https://b6le5uc3r0.execute-api.us-east-1.amazonaws.com/chat
+
+
 # Architecture 
 
 The system is designed as a serverless, event-driven architecture:
