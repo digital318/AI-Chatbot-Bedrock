@@ -61,8 +61,11 @@ DynamoDB
 
 # Current Limitations
 
-- CloudFront distribution pending account verification.
-- Bedrock on-demand token quotas restricted on new accounts.
+- No user authentication (public demo only)
+- No rate limiting implemented at API Gateway level
+- No custom domain (using default CloudFront domain)
+- Basic prompt design (no advanced system prompt tuning)
+- No structured logging dashboard (CloudWatch only)
 
 
 # Request Flow
