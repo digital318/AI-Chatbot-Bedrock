@@ -36,26 +36,27 @@ Components:
 
 # Architecture Diagram
 
-         [ User Browser ]
-                 │
-                 ▼
-          [ CloudFront ]
-                 │
-                 ▼
-         [ S3 Static Site ]
-          (Chat Widget UI)
-                 │
-                 ▼
-         [ API Gateway ]
-           (HTTP API)
-                 │
-                 ▼
-           [ AWS Lambda ]
-         (Chat API Backend)
-           │            │
-           ▼            ▼
-[ Amazon Bedrock ]  [ DynamoDB ]
-   (LLM Model)     (Chat Sessions)
+         
+                [ User Browser ]
+                        |
+                        ▼
+                 [ CloudFront ]
+                        |
+                        ▼
+               [ S3 Static Site ]
+                (Chat Widget UI)
+                        |
+                        ▼
+                [ API Gateway ]
+                   (HTTP API)
+                        |
+                        ▼
+                  [ AWS Lambda ]
+                (Chat API Backend)
+               |                  |
+               ▼                  ▼
+        [ Amazon Bedrock ]   [ DynamoDB ]
+          (LLM Model)       (Chat Sessions) 
 
 
 # Design Decisions
