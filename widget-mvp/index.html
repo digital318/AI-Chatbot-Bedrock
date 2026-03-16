@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Floating Chat Widget MVP</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #f3f4f6;
+    }
+
+    .page-demo {
+      padding: 48px 24px;
+      max-width: 960px;
+      margin: 0 auto;
+      color: #111827;
+    }
+
+    .page-demo h1 {
+      margin-bottom: 12px;
+      font-size: 32px;
+    }
+
+    .page-demo p {
+      color: #4b5563;
+      line-height: 1.6;
+      max-width: 720px;
+    }
+
+    .chat-launcher {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 64px;
+      height: 64px;
+      border: none;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+      z-index: 1000;
+    }
+
+    .chat-widget {
+      position: fixed;
+      right: 24px;
+      bottom: 100px;
+      width: 380px;
+      max-width: calc(100vw - 32px);
+      height: 560px;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      z-index: 1000;
+    }
+
+    .chat-widget.open {
+      display: flex;
+    }
+
+    .chat-header {
+      background: #111827;
+      color: white;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .chat-header-left h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .chat-header-left p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #d1d5db;
+    }
+
+    .chat-header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-header-actions button {
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f9fafb;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      max-width: 82%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      line-height: 1.45;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background: #111827;
+      color: white;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .message.system {
+      align-self: center;
+      background: #fff7ed;
+      color: #9a3412;
+      border: 1px solid #fdba74;
+      font-size: 12px;
+    }
+
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .typing span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #6b7280;
+      display: inline-block;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.15s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid #e5e7eb;
+      background: white;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .chat-input-area button {
+      background: #111827;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0 18px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .chat-input-area button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      padding: 0 14px 14px;
+      font-size: 12px;
+      color: #6b7280;
+      background: white;
+    }
+
+    @media (max-width: 640px) {
+      .chat-widget {
+        right: 12px;
+        left: 12px;
+        bottom: 88px;
+        width: auto;
+        max-width: none;
+        height: 70vh;
+      }
+
+    .chat-launcher {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 64px;
+      height: 64px;
+      border: none;
+      border-radius: 999px;
+      background: #111827;
+      color: white;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+      z-index: 1001;
+    }
+  }
+  </style>
+</head>
+<body>
+  <div class="page-demo">
+    <h1>Course Creator Site Demo</h1>
+    <p>
+      This is a demo page showing how your AI course assistant can appear as a floating chat widget
+      on a creator’s site. Click the button in the bottom-right corner to open the chat.
+    </p>
+  </div>
+
+  <button id="chatLauncher" class="chat-launcher" aria-label="Open chat">
+    💬
+  </button>
+
+  <div id="chatWidget" class="chat-widget">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <h2>Course Assistant</h2>
+        <p>Ask questions about your uploaded documents</p>
+      </div>
+      <div class="chat-header-actions">
+        <button id="resetChatButton" type="button">Reset</button>
+        <button id="closeChatButton" type="button">Close</button>
+      </div>
+    </div>
+
+    <div id="chatMessages" class="chat-messages">
+      <div class="message bot">
+        Hi — I’m your course assistant. Ask me a question about the course materials.
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <input
+        id="chatInput"
+        type="text"
+        placeholder="Type your question..."
+      />
+      <button id="sendButton">Send</button>
+    </div>
+
+    <div id="status" class="status">Ready</div>
+  </div>
+
+  <script>
+  const API_URL = "https://b6le5uc3r0.execute-api.us-east-1.amazonaws.com/chat";
+  const TENANT_ID = "creator_123";
+
+  const chatLauncher = document.getElementById("chatLauncher");
+  const chatWidget = document.getElementById("chatWidget");
+  const closeChatButton = document.getElementById("closeChatButton");
+  const resetChatButton = document.getElementById("resetChatButton");
+  const chatMessages = document.getElementById("chatMessages");
+  const chatInput = document.getElementById("chatInput");
+  const sendButton = document.getElementById("sendButton");
+  const statusEl = document.getElementById("status");
+
+  let sessionId = localStorage.getItem("chat_session_id");
+  let typingEl = null;
+  let isOpen = false;
+
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("chat_session_id", sessionId);
+  }
+
+  function openWidget() {
+    chatWidget.classList.add("open");
+    chatLauncher.textContent = "✕";
+    isOpen = true;
+    setTimeout(() => chatInput.focus(), 50);
+  }
+
+  function closeWidget() {
+    chatWidget.classList.remove("open");
+    chatLauncher.textContent = "💬";
+    isOpen = false;
+  }
+
+  function toggleWidget() {
+    if (isOpen) {
+      closeWidget();
+    } else {
+      openWidget();
+    }
+  }
+
+  function addMessage(text, sender) {
+    const messageEl = document.createElement("div");
+    messageEl.className = `message ${sender}`;
+    messageEl.textContent = text;
+    chatMessages.appendChild(messageEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function showTyping() {
+    hideTyping();
+
+    typingEl = document.createElement("div");
+    typingEl.className = "message bot";
+    typingEl.innerHTML = `
+      <div class="typing">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    `;
+    chatMessages.appendChild(typingEl);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function hideTyping() {
+    if (typingEl) {
+      typingEl.remove();
+      typingEl = null;
+    }
+  }
+
+  function resetChat() {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("chat_session_id", sessionId);
+
+    chatMessages.innerHTML = `
+      <div class="message bot">
+        Hi — I’m your course assistant. Ask me a question about the course materials.
+      </div>
+    `;
+
+    statusEl.textContent = "New conversation started";
+    chatInput.focus();
+  }
+
+  async function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    addMessage(message, "user");
+    chatInput.value = "";
+    sendButton.disabled = true;
+    statusEl.textContent = "Sending...";
+    showTyping();
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          tenant_id: TENANT_ID,
+          message: message
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      hideTyping();
+
+      if (data.session_id) {
+        sessionId = data.session_id;
+        localStorage.setItem("chat_session_id", sessionId);
+      }
+
+      addMessage(data.reply || "No reply received.", "bot");
+      statusEl.textContent = "Ready";
+    } catch (error) {
+      hideTyping();
+      console.error("Chat error:", error);
+      addMessage("Sorry, something went wrong connecting to the chatbot.", "bot");
+      statusEl.textContent = "Error";
+    } finally {
+      sendButton.disabled = false;
+      chatInput.focus();
+    }
+  }
+
+  chatLauncher.addEventListener("click", toggleWidget);
+  closeChatButton.addEventListener("click", closeWidget);
+  resetChatButton.addEventListener("click", resetChat);
+  sendButton.addEventListener("click", sendMessage);
+
+  chatInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      sendMessage();
+    }
+  });
+</script>

@@ -8,11 +8,11 @@ data "aws_caller_identity" "current" {}
 resource "aws_dynamodb_table" "chat_messages" {
   name         = "${local.name_prefix}-messages"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "session_id"
+  hash_key     = "pk"
   range_key    = "ts"
 
   attribute {
-    name = "session_id"
+    name = "pk"
     type = "S"
   }
 
@@ -77,12 +77,10 @@ resource "aws_iam_role_policy" "lambda_policy" {
       {
         Effect = "Allow",
         Action = [
-          "bedrock:InvokeModel",
-          "bedrock:Converse",
-          "bedrock:ConverseStream"
+          "bedrock:*"
         ],
-  Resource = "arn:aws:bedrock:us-east-1::foundation-model/${var.bedrock_model_id}"
-      }
+        Resource = "*"
+      },
     ]
   })
 }
@@ -100,11 +98,12 @@ resource "aws_lambda_function" "chat_api" {
   memory_size  = 512
 
   environment {
-    variables = {
-      DDB_TABLE        = aws_dynamodb_table.chat_messages.name
-      BEDROCK_MODEL_ID = var.bedrock_model_id
-      MEMORY_LIMIT     = tostring(var.memory_limit)
-    }
+  variables = {
+    BEDROCK_MODEL_ID = var.bedrock_model_id
+    MEMORY_LIMIT     = tostring(var.memory_limit)
+    MESSAGES_TABLE   = aws_dynamodb_table.chat_messages.name
+    TENANTS_TABLE    = "tenants"
+   }
   }
 }
 
