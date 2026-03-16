@@ -1,7 +1,14 @@
+# AI Chatbot Bedrock
+
+A serverless AI chatbot built on AWS using Amazon Bedrock, Lambda, API Gateway, and DynamoDB.
+The chatbot supports multi-session conversations, integrates with foundation models from Amazon Bedrock, and can be embedded into websites via a lightweight widget.
+This project demonstrates a production-style serverless architecture for building scalable AI applications.
+
+
 # Project Overview
 
-This project is a serverless AI chatbot built on AWS using Amazon Bedrock for LLM inference.  
-It demonstrates Infrastructure as Code (Terraform), secure serverless design patterns, and scalable cloud architecture suitable for production environments.
+This project demonstrates a production-ready serverless architecture for building scalable AI chat applications on AWS.  
+It uses Amazon Bedrock for AI inference, AWS Lambda for backend logic, API Gateway for REST API exposure, and DynamoDB for session persistence.
 
 
 # Live Demo
@@ -17,29 +24,38 @@ POST https://b6le5uc3r0.execute-api.us-east-1.amazonaws.com/chat
 
 The system is designed as a serverless, event-driven architecture:
 
-- Amazon API Gateway (HTTP API) provides a lightweight REST endpoint.
-- AWS Lambda (Python 3.12) processes chat requests.
-- Amazon DynamoDB stores session-based conversation history.
-- Amazon Bedrock powers LLM inference.
-- Amazon S3 hosts the static frontend.
-- Amazon CloudFront distributes content globally with HTTPS enforcement.
+Components:
+
+- Amazon API Gateway (HTTP API) provides a lightweight REST endpoint
+- AWS Lambda processes chat requests
+- Amazon Bedrock powers LLM inference
+- DynamoDB stores session conversation history
+- Amazon S3 hosts the static frontend
+- CloudFront distributes the application globally
 
 
 # Architecture Diagram
 
-Client
-   ↓
-CloudFront
-   ↓
-S3 (Static Site)
-   ↓
-API Gateway
-   ↓
-Lambda
-   ↓
-Bedrock
-   ↓
-DynamoDB
+         [ User Browser ]
+                 │
+                 ▼
+          [ CloudFront ]
+                 │
+                 ▼
+         [ S3 Static Site ]
+          (Chat Widget UI)
+                 │
+                 ▼
+         [ API Gateway ]
+           (HTTP API)
+                 │
+                 ▼
+           [ AWS Lambda ]
+         (Chat API Backend)
+           │            │
+           ▼            ▼
+[ Amazon Bedrock ]  [ DynamoDB ]
+   (LLM Model)     (Chat Sessions)
 
 
 # Design Decisions
@@ -56,7 +72,7 @@ DynamoDB
 - IAM role-based access for Lambda
 - Principle of least privilege applied to Bedrock and DynamoDB
 - HTTPS enforced via CloudFront
-- S3 public access blocked
+- S3 public access blocked with CloudFront as the only distribution layer
 
 
 # Current Limitations
