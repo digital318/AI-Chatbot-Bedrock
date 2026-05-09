@@ -23,6 +23,31 @@ tenants_table = dynamodb.Table(TENANTS_TABLE)
 brt = boto3.client("bedrock-runtime")
 bart = boto3.client("bedrock-agent-runtime")
 
+def should_use_kb(message: str) -> bool:
+    msg = message.lower()
+
+    kb_keywords = [
+        "course",
+        "lesson",
+        "module",
+        "refund",
+        "pricing",
+        "policy",
+        "product",
+        "shipping",
+        "returns",
+        "order",
+        "store",
+        "business",
+        "company",
+        "creator",
+        "program",
+        "membership",
+        "support"
+    ]
+
+    return any(keyword in msg for keyword in kb_keywords)
+
 
 def _get_kb_id_for_tenant(tenant_id: str) -> str:
     resp = tenants_table.get_item(
@@ -72,17 +97,51 @@ def kb_answer(user_text: str, tenant_id: str) -> str:
         return "I couldn't find that in your uploaded documents."
 
     resp = bart.retrieve_and_generate(
-        input={"text": user_text},
-        retrieveAndGenerateConfiguration={
-            "type": "KNOWLEDGE_BASE",
-            "knowledgeBaseConfiguration": {
-                "knowledgeBaseId": kb_id,
-                "modelArn": model_arn
+    input={"text": user_text},
+    retrieveAndGenerateConfiguration={
+        "type": "KNOWLEDGE_BASE",
+        "knowledgeBaseConfiguration": {
+            "knowledgeBaseId": kb_id,
+            "modelArn": model_arn,
+            "generationConfiguration": {
+                "inferenceConfig": {
+                    "textInferenceConfig": {
+                        "maxTokens": 200
+                    }
+                }
             }
         }
-    )
+    }
+)
 
     return resp["output"]["text"]
+
+def basic_answer(user_text: str) -> str:
+    resp = brt.invoke_model(
+        modelId=MODEL_ID,
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps({
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "text": user_text
+                        }
+                    ]
+                }
+            ],
+            "inferenceConfig": {
+                "max_new_tokens": 200,
+                "temperature": 0.5,
+                "top_p": 0.9
+            }
+        })
+    )
+
+    body = json.loads(resp["body"].read())
+    return body["output"]["message"]["content"][0]["text"]
     
 
 def _now_iso() -> str:
@@ -103,16 +162,23 @@ def _parse_event(event):
         raw = event.get("body") or "{}"
         data = json.loads(raw) if isinstance(raw, str) else raw
         session_id = (data.get("session_id") or "").strip()
-        tenant_id = (data.get("tenant_id") or "").strip()  
+        tenant_id = (data.get("tenant_id") or "").strip()
+
+        tenant_resp = tenants_table.get_item(
+            Key={"tenant_id": tenant_id}
+        )
+
+        tenant_config = tenant_resp.get("Item", {})  
+        
         message = (data.get("message") or "").strip()
         
         if not session_id:
             session_id = str(uuid.uuid4())
         
         if not message or not tenant_id:
-            return None, None, None, None
+            return None, None, None, None, None 
         
-        return data, session_id, tenant_id, message
+        return data, session_id, tenant_id, message, tenant_config
     
     except Exception:
         return None, None, None, None 
@@ -156,10 +222,16 @@ def _write_message(session_id: str, role: str, content: str, latency_ms=None):
     messages_table.put_item(Item=item)
 
 
-def _call_bedrock(messages, user_message: str, tenant_id: str):    
+def _call_bedrock(messages, user_message: str, tenant_id: str):
     t0 = time.time()
-    answer = kb_answer(user_message, tenant_id)
+
+    if should_use_kb(user_message):
+        answer = kb_answer(user_message, tenant_id)
+    else:
+        answer = basic_answer(user_message)
+
     latency_ms = int((time.time() - t0) * 1000)
+
     return answer, latency_ms
 
 
@@ -167,7 +239,7 @@ def _call_bedrock(messages, user_message: str, tenant_id: str):
 def lambda_handler(event, context):
     session_id = str(uuid.uuid4())
 
-    data, parsed_session_id, tenant_id, message = _parse_event(event)
+    data, parsed_session_id, tenant_id, message, tenant_config = _parse_event(event)
 
     if not message or not tenant_id:
         return _resp(400, {"error": "Provide JSON body: { session_id?: string, tenant_id: string, message: string }"})
@@ -184,7 +256,17 @@ def lambda_handler(event, context):
 
         _write_message(session_id, "assistant", reply, latency_ms=latency_ms)
 
-        return _resp(200, {"session_id": session_id, "reply": reply})
+        return _resp(200, {
+            "session_id": session_id,
+            "reply": reply,
+            "tenant": {
+                "name": tenant_config.get("name", ""),
+                "bot_name": tenant_config.get("bot_name", "AI Assistant"),
+                "brand_color": tenant_config.get("brand_color", "#2563eb"),
+                "welcome_message": tenant_config.get("welcome_message", "How can I help you today?"),
+                "logo_url": tenant_config.get("logo_url", "")
+            }
+        })
 
     except Exception as e:
         print("🔥 EXCEPTION:", str(e))
